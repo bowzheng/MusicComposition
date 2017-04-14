@@ -236,7 +236,7 @@ outPattern.append(outTrack)
 
 #parameters
 lr = 0.001
-training_iters = 300
+training_iters = 30
 batch_size = 128
 
 n_inputs = 10   # midi events (tick[0], pitch[1:128], velocity[129])
