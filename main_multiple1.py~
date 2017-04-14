@@ -238,11 +238,11 @@ outPattern.append(outTrack)
 
 #parameters
 lr = 0.001
-training_iters = 300
+training_iters = 3000
 batch_size = 128
 
 n_inputs = 10   # midi events (tick[0], pitch[1:128], velocity[129])
-n_steps = 64    # time steps
+n_steps = 128    # time steps
 n_hidden_units = 16   # neurons in hidden layer
 n_outputs = 10      # next midi events
 #TINY = 1e-6    # to avoid NaNs in logs
@@ -273,33 +273,18 @@ biases = {
 
 pred = RNN(x, weights, biases)
 
-#pred_ = tf.round(pred)
 pred_ = pred
 
-#def loss(y, pred):
-#    error = 0
-#    for i in range(n_inputs):
-#        if y[0][i] * pred[0][i] > 0:
-#            temp = 0
-#        else:
-#            temp = int(y[0][i]) * int(pred[0][i])
-#        error = error + temp
-#    return error
-
-#cost = loss(y, pred)
-#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
-#cost = tf.reduce_mean(tf.argmax(y, 1) - tf.argmax(pred, 1))
+ 
 cost = tf.reduce_mean(tf.contrib.losses.mean_squared_error(pred, y))
-#cost = tf.reduce_mean(tf.abs(pred - y) * tf.abs(pred - y))
-
+ 
 train_op = tf.train.AdamOptimizer(lr).minimize(cost)
-#correct_prediction = tf.equal(tf.round(y), tf.round(pred))
-#accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+ 
 accuracy = tf.reduce_mean(tf.cast(tf.abs(y - pred_) < 0.005, tf.float32))
 
 
 
-with tf.Session() as sess:
+with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
     # tf.initialize_all_variables() no long valid from
     # 2017-03-02 if using tensorflow >= 0.12
     if int((tf.__version__).split('.')[1]) < 12 and int((tf.__version__).split('.')[0]) < 1:
@@ -358,7 +343,6 @@ init_i = random.randint(0,len(data)-batch_size*2)
 test_x = data[init_i:init_i+n_steps]
 test_x = np.array(test_x)
 test_x = test_x.reshape([1, n_steps, n_inputs])
-print test_x.shape
 predicted_y = pred_.eval(feed_dict = {x: test_x})
 predicted_y = predicted_y.reshape([1, 1, n_inputs])
 
