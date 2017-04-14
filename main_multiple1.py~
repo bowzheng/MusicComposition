@@ -242,7 +242,7 @@ training_iters = 3000
 batch_size = 128
 
 n_inputs = 10   # midi events (tick[0], pitch[1:128], velocity[129])
-n_steps = 128    # time steps
+n_steps = 64    # time steps
 n_hidden_units = 16   # neurons in hidden layer
 n_outputs = 10      # next midi events
 #TINY = 1e-6    # to avoid NaNs in logs
@@ -284,7 +284,8 @@ accuracy = tf.reduce_mean(tf.cast(tf.abs(y - pred_) < 0.005, tf.float32))
 
 
 
-with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+#with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+with tf.Session() as sess:
     # tf.initialize_all_variables() no long valid from
     # 2017-03-02 if using tensorflow >= 0.12
     if int((tf.__version__).split('.')[1]) < 12 and int((tf.__version__).split('.')[0]) < 1:
