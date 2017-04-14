@@ -140,6 +140,7 @@ def RNN(X, weights, biases):
 
     # transpose the inputs shape from
     # X ==> (128 batch * 28 steps, 28 inputs)
+    batch_size = tf.shape(X)[0]
     X = tf.reshape(X, [-1, n_inputs])
 
     # into hidden
@@ -172,6 +173,7 @@ def RNN(X, weights, biases):
     # dynamic_rnn receive Tensor (batch, steps, inputs) or (steps, batch, inputs) as X_in.
     # Make sure the time_major is changed accordingly.
     outputs, final_state = tf.nn.dynamic_rnn(cell, X_in, initial_state=init_state, time_major=False)
+    #outputs, final_state = tf.nn.dynamic_rnn(cell, X_in, time_major=False)
     
 
     # hidden layer for output as the final results
@@ -351,47 +353,31 @@ new_saver = tf.train.Saver()
 new_saver.restore(sess, "./LSTMmodel/model.ckpt")
 print("model restored.")
 
-#correct_prediction = tf.equal(tf.argmax(fx,1), tf.argmax(y,1))
-#accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-#sess.run(accuracy, feed_dict={x: test_images,y: test_labels})
-#prediction = tf.argmax(fx,1)
 init_i = random.randint(0,len(data)-batch_size*2)
 #init_i = 100
-test_x = []
-i_batch = init_i
-for i in range(batch_size):
-    temp = data[i_batch+i:i_batch+i+n_steps]
-    test_x.append(temp)
+test_x = data[init_i:init_i+n_steps]
 test_x = np.array(test_x)
-test_x = test_x.reshape([batch_size, n_steps, n_inputs])
+test_x = test_x.reshape([1, n_steps, n_inputs])
 predicted_y = pred_.eval(feed_dict = {x: test_x})
-predicted_y = predicted_y.reshape([1, batch_size, n_inputs])
-#temp = predicted_y[0][-n_steps:]
-temp = predicted_y[0][0:n_steps]
+predicted_y = predicted_y.reshape([1, 1, n_inputs])
 
 #print test_x
 #print predicted_y
 
-outData = predicted_y[0][0].reshape([1, 1, n_inputs])
+outData = predicted_y
 
 for i in range(200):
-    test_x = np.delete(test_x, (0), axis=0)
-    #print test_x.shape
+    test_x = np.delete(test_x, (0), axis=1)
     #print temp.shape
-    test_x = np.append(test_x, temp.reshape([1, n_steps, n_inputs]), axis=0)
-    test_x = test_x.reshape([batch_size, n_steps, n_inputs])
+    test_x = np.append(test_x, predicted_y, axis=1)
+    test_x = test_x.reshape([1, n_steps, n_inputs])
     #print test_x
     predicted_y = pred_.eval(feed_dict = {x: test_x})
-    predicted_y = predicted_y.reshape([1, batch_size, n_inputs])
-    #temp = predicted_y[0][-n_steps:]
-    temp = predicted_y[0][0:n_steps]
-    #print temp
-    #temp1 = [ i + random.randint(-10,10)/float(maxD - minD) for i in temp]
-    #temp = np.array(temp1)
+    predicted_y = predicted_y.reshape([1, 1, n_inputs])
     
     
     #print predicted_y[0][0].reshape([1, 1, n_inputs])
-    outData = np.append(outData,predicted_y[0][0].reshape([1, 1, n_inputs]), axis=1)
+    outData = np.append(outData,predicted_y, axis=1)
 
 
 sess.close()
