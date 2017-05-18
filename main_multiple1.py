@@ -37,7 +37,7 @@ def mergeMidi(filename):
     return mergePattern
     
 # midi to data (piano roll)
-base = 60
+base = 120
 def midi2data(mergePattern):
     for track in mergePattern:
         lastTick = 0
@@ -157,7 +157,7 @@ def RNN(X, weights, biases):
     n_layers = 2
     for i in range(n_layers):
         cell1 = tf.nn.rnn_cell.BasicLSTMCell(n_hidden_units, forget_bias=1.0, state_is_tuple=True)
-        cell1 = tf.nn.rnn_cell.DropoutWrapper(cell1, input_keep_prob=1.0, output_keep_prob=0.8)
+        cell1 = tf.nn.rnn_cell.DropoutWrapper(cell1, input_keep_prob=1.0, output_keep_prob=0.9)
         cells.append(cell1)
     
     cell = tf.nn.rnn_cell.MultiRNNCell(cells, state_is_tuple=True)
@@ -238,11 +238,11 @@ outPattern.append(outTrack)
 
 #parameters
 lr = 0.001
-training_iters = 30000
-batch_size = 128
+training_iters = 300000
+batch_size = 1024
 
 n_inputs = 10   # midi events (tick[0], pitch[1:128], velocity[129])
-n_steps = 64    # time steps
+n_steps = 4    # time steps
 n_hidden_units = 16   # neurons in hidden layer
 n_outputs = 10      # next midi events
 #TINY = 1e-6    # to avoid NaNs in logs
@@ -298,7 +298,7 @@ with tf.Session() as sess:
         batch_xs = []
         batch_ys = []
         for i in range(batch_size):
-            start = random.randint(0,len(data)-batch_size*2)
+            start = random.randint(0,len(data)-n_steps*2)
             temp_x = data[start:start+n_steps]
             temp_y = data[start+n_steps]
             batch_xs.append(temp_x)
@@ -330,7 +330,6 @@ with tf.Session() as sess:
     save_path = saver.save(sess, "./LSTMmodel/model.ckpt")
     print("Model saved in file: %s" % save_path)
     sess.close()
-
   
 
 #test
@@ -339,7 +338,7 @@ new_saver = tf.train.Saver()
 new_saver.restore(sess, "./LSTMmodel/model.ckpt")
 print("model restored.")
 
-init_i = random.randint(0,len(data)-batch_size*2)
+init_i = random.randint(0,len(data)-n_steps*2)
 #init_i = 100
 test_x = data[init_i:init_i+n_steps]
 test_x = np.array(test_x)
@@ -352,7 +351,7 @@ predicted_y = predicted_y.reshape([1, 1, n_inputs])
 
 outData = predicted_y
 
-for i in range(200):
+for i in range(2000):
     test_x = np.delete(test_x, (0), axis=1)
     #print temp.shape
     test_x = np.append(test_x, predicted_y, axis=1)
