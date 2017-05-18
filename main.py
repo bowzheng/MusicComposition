@@ -177,7 +177,7 @@ def RNN(X, weights, biases):
 #files = glob.glob("./liszt/*.mid")
 #files = glob.glob("liz_liebestraum.mid")
 
-files = glob.glob("./liszt/*.mid")
+files = glob.glob("./train/*.mid")
 patternList = []
 dataPattern = midi.Pattern(resolution=480)
 track = midi.Track()
