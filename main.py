@@ -71,7 +71,7 @@ def midi2data(mergePattern):
                     row[event.data[0]] = 0
     outData = []
     for row in data:
-        outRow = [-1] * 128
+        outRow = [0] * 128
         for i in range(len(row)):
             if row[i] != 0:
                 outRow[row[i]] = 1
@@ -124,6 +124,7 @@ def RNN(X, weights, biases):
 
     # transpose the inputs shape from
     # X ==> (128 batch * 28 steps, 28 inputs)
+    batch_size = tf.shape(X)[0]
     X = tf.reshape(X, [-1, n_inputs])
 
     # into hidden
@@ -168,8 +169,9 @@ def RNN(X, weights, biases):
 
     middle = tf.sigmoid(tf.matmul(outputs[-1], weights['mid']) + biases['mid'])
     results = tf.matmul(middle, weights['out']) + biases['out']    # shape = (128, 10)
+    results_ = tf.sigmoid(results)
 
-    return results
+    return results_
  
    
 #if __name__ == "__main__":
@@ -191,27 +193,9 @@ for pattern in patternList:
 data = midi2data(dataPattern)
 #print data
 print len(data)
-data2midi("single.mid", data)
+data2midi("training.mid", data)
 
 
-
-#outData = []
-#for d in data:
-#    temp = []
-#    for i in d:
-#        temp.append(i/float(maxD))
-#    outData.append(temp)
-#data = outData
-#print data
-
-#data = []   
-#for i in range(40000):
-#    data.append(math.sin(float(i)/10))
-#print data
-#plt.plot(data)
-#plt.show()
-
-#output midi
 outPattern = midi.Pattern(resolution=480)
 outTrack = midi.Track()
 outPattern.append(outTrack)
@@ -221,11 +205,11 @@ outPattern.append(outTrack)
 #parameters
 lr = 0.001
 training_iters = 30000
-batch_size = 16
+batch_size = 128
 
 n_inputs = 128   # midi events (tick[0], pitch[1:128], velocity[129])
-n_steps = 64    # time steps
-n_hidden_units = 16   # neurons in hidden layer
+n_steps = 120    # time steps
+n_hidden_units = 128   # neurons in hidden layer
 n_outputs = 128      # next midi events
 #TINY = 1e-6    # to avoid NaNs in logs
 
@@ -254,33 +238,19 @@ biases = {
 
 
 pred = RNN(x, weights, biases)
+pred_ = tf.round(pred)
 
-#pred_ = tf.round(pred)
-pred_ = pred
+#cost = tf.reduce_mean(tf.contrib.losses.mean_squared_error(pred, y))
+cost = - tf.reduce_sum(tf.log((1 - pred) * (1 - y) + pred * y + np.spacing(np.float32(1.0)))) / tf.reduce_sum(y)
 
-#def loss(y, pred):
-#    error = 0
-#    for i in range(n_inputs):
-#        if y[0][i] * pred[0][i] > 0:
-#            temp = 0
-#        else:
-#            temp = int(y[0][i]) * int(pred[0][i])
-#        error = error + temp
-#    return error
-
-#cost = loss(y, pred)
-#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
-#cost = tf.reduce_mean(tf.argmax(y, 1) - tf.argmax(pred, 1))
-cost = tf.reduce_mean(tf.contrib.losses.mean_squared_error(pred, y))
-#cost = tf.reduce_mean(tf.abs(pred - y) * tf.abs(pred - y))
 
 train_op = tf.train.AdamOptimizer(lr).minimize(cost)
 #correct_prediction = tf.equal(tf.round(y), tf.round(pred))
 #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-accuracy = tf.reduce_mean(tf.cast(tf.abs(y - pred_) < 0.005, tf.float32))
+#accuracy = tf.reduce_mean(tf.cast(tf.abs(y - pred_) < 0.005, tf.float32))
+accuracy = 1 - tf.reduce_sum(tf.cast(tf.abs(y - pred_) > 0.5, tf.float32)) / tf.reduce_sum(y)
 
-
-
+"""
 with tf.Session() as sess:
     # tf.initialize_all_variables() no long valid from
     # 2017-03-02 if using tensorflow >= 0.12
@@ -294,7 +264,7 @@ with tf.Session() as sess:
         batch_xs = []
         batch_ys = []
         for i in range(batch_size):
-            start = random.randint(0,len(data)-batch_size*2)
+            start = random.randint(0,len(data)-n_steps*2)
             temp_x = data[start:start+n_steps]
             temp_y = data[start+n_steps]
             batch_xs.append(temp_x)
@@ -326,8 +296,8 @@ with tf.Session() as sess:
     save_path = saver.save(sess, "./LSTMmodel/model.ckpt")
     print("Model saved in file: %s" % save_path)
     sess.close()
+"""
 
-  
 
 #test
 sess = tf.InteractiveSession()
@@ -335,11 +305,24 @@ new_saver = tf.train.Saver()
 new_saver.restore(sess, "./LSTMmodel/model.ckpt")
 print("model restored.")
 
-#correct_prediction = tf.equal(tf.argmax(fx,1), tf.argmax(y,1))
-#accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-#sess.run(accuracy, feed_dict={x: test_images,y: test_labels})
-#prediction = tf.argmax(fx,1)
-init_i = random.randint(0,len(data)-batch_size*2)
+
+
+init_i = random.randint(0,len(data)-n_steps*2)
+test_x = np.array(data[init_i : init_i+n_steps])
+test_x = test_x.reshape([1, n_steps, n_inputs])
+predicted_y = pred_.eval(feed_dict = {x: test_x})
+outData = predicted_y.reshape([1, 1, n_inputs])
+
+"""
+for i in range(2000):
+    test_x = np.delete(test_x, (0), axis=1)
+    test_x = np.append(test_x, predicted_y.reshape([1, 1, n_inputs]), axis=1)
+    predicted_y = pred_.eval(feed_dict = {x: test_x})
+    outData = np.append(outData, predicted_y.reshape([1, 1, n_inputs]), axis=1)
+"""
+
+
+init_i = random.randint(0,len(data)-n_steps*2)
 #init_i = 100
 test_x = []
 i_batch = init_i
@@ -358,7 +341,7 @@ temp = predicted_y[0][0:n_steps]
 
 outData = predicted_y[0][0].reshape([1, 1, n_inputs])
 
-for i in range(2000):
+for i in range(200):
     test_x = np.delete(test_x, (0), axis=0)
     #print test_x.shape
     #print temp.shape
@@ -377,9 +360,7 @@ for i in range(2000):
     #print predicted_y[0][0].reshape([1, 1, n_inputs])
     outData = np.append(outData,predicted_y[0][0].reshape([1, 1, n_inputs]), axis=1)
 
-
 sess.close()
-
 
 #plt.plot(outData[0])
 #plt.show()
@@ -391,7 +372,7 @@ output = []
 for d in outData[0]:
     temp = []
     for i in d:
-        if i <= 0:
+        if i <= 0.5:
             temp.append(0)
         else:
             temp.append(1)
