@@ -179,7 +179,7 @@ def RNN(X, weights, biases):
 #files = glob.glob("./liszt/*.mid")
 #files = glob.glob("liz_liebestraum.mid")
 
-files = glob.glob("./train/*.mid")
+files = glob.glob("./test/*.mid")
 patternList = []
 dataPattern = midi.Pattern(resolution=480)
 track = midi.Track()
@@ -204,11 +204,11 @@ outPattern.append(outTrack)
 
 #parameters
 lr = 0.001
-training_iters = 30000
+training_iters = 3000
 batch_size = 128
 
 n_inputs = 128   # midi events (tick[0], pitch[1:128], velocity[129])
-n_steps = 120    # time steps
+n_steps = 64    # time steps
 n_hidden_units = 128   # neurons in hidden layer
 n_outputs = 128      # next midi events
 #TINY = 1e-6    # to avoid NaNs in logs
@@ -241,14 +241,14 @@ pred = RNN(x, weights, biases)
 pred_ = tf.round(pred)
 
 #cost = tf.reduce_mean(tf.contrib.losses.mean_squared_error(pred, y))
-cost = - tf.reduce_sum(tf.log((1 - pred) * (1 - y) + pred * y + np.spacing(np.float32(1.0)))) / tf.reduce_sum(y)
+cost = - tf.reduce_sum(tf.log((1 - pred) * (1 - y) + pred * y + np.spacing(np.float32(1.0)))) / tf.abs(tf.reduce_sum(tf.cast(pred > 0.5, tf.float32)) - tf.reduce_sum(y) + np.spacing(np.float32(1.0)))
 
 
 train_op = tf.train.AdamOptimizer(lr).minimize(cost)
 #correct_prediction = tf.equal(tf.round(y), tf.round(pred))
 #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 #accuracy = tf.reduce_mean(tf.cast(tf.abs(y - pred_) < 0.005, tf.float32))
-accuracy = 1 - tf.reduce_sum(tf.cast(tf.abs(y - pred_) > 0.5, tf.float32)) / tf.reduce_sum(y)
+accuracy = 1 - tf.reduce_sum(tf.cast(tf.abs(y - pred_) > 0.5, tf.float32)) / (tf.reduce_sum(y) + np.spacing(np.float32(1.0)) )
 
 """
 with tf.Session() as sess:
@@ -306,15 +306,17 @@ new_saver.restore(sess, "./LSTMmodel/model.ckpt")
 print("model restored.")
 
 
-
+"""
 init_i = random.randint(0,len(data)-n_steps*2)
 test_x = np.array(data[init_i : init_i+n_steps])
 test_x = test_x.reshape([1, n_steps, n_inputs])
 predicted_y = pred_.eval(feed_dict = {x: test_x})
-outData = predicted_y.reshape([1, 1, n_inputs])
+outData = test_x
+outData = np.append(outData, predicted_y.reshape([1, 1, n_inputs]), axis=1)
+#outData = predicted_y.reshape([1, 1, n_inputs])
 
-"""
-for i in range(2000):
+
+for i in range(200):
     test_x = np.delete(test_x, (0), axis=1)
     test_x = np.append(test_x, predicted_y.reshape([1, 1, n_inputs]), axis=1)
     predicted_y = pred_.eval(feed_dict = {x: test_x})
@@ -336,12 +338,12 @@ predicted_y = predicted_y.reshape([1, batch_size, n_inputs])
 #temp = predicted_y[0][-n_steps:]
 temp = predicted_y[0][0:n_steps]
 
-#print test_x
-#print predicted_y
-
 outData = predicted_y[0][0].reshape([1, 1, n_inputs])
+#outData = np.array(data[i_batch:i_batch+n_steps+batch_size])
+#outData = outData.reshape([1, n_steps+batch_size, n_inputs])
+#outData = np.append(outData,predicted_y[0][0].reshape([1, 1, n_inputs]), axis=1)
 
-for i in range(200):
+for i in range(2000):
     test_x = np.delete(test_x, (0), axis=0)
     #print test_x.shape
     #print temp.shape
