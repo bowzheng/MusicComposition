@@ -168,10 +168,10 @@ def RNN(X, weights, biases):
     outputs = tf.unpack(tf.transpose(outputs, [1, 0, 2]))    # states is the last outputs
 
     middle = tf.sigmoid(tf.matmul(outputs[-1], weights['mid']) + biases['mid'])
-    results = tf.matmul(middle, weights['out']) + biases['out']    # shape = (128, 10)
-    results_ = tf.sigmoid(results)
+    results = tf.sigmoid(tf.matmul(middle, weights['out']) + biases['out'])   # shape = (128, 10)
+    #results_ = tf.sigmoid(results)
 
-    return results_
+    return results
  
    
 #if __name__ == "__main__":
@@ -179,7 +179,7 @@ def RNN(X, weights, biases):
 #files = glob.glob("./liszt/*.mid")
 #files = glob.glob("liz_liebestraum.mid")
 
-files = glob.glob("./test/*.mid")
+files = glob.glob("./train/*.mid")
 patternList = []
 dataPattern = midi.Pattern(resolution=480)
 track = midi.Track()
@@ -241,16 +241,16 @@ pred = RNN(x, weights, biases)
 pred_ = tf.round(pred)
 
 #cost = tf.reduce_mean(tf.contrib.losses.mean_squared_error(pred, y))
-cost = - tf.reduce_sum(tf.log((1 - pred) * (1 - y) + pred * y + np.spacing(np.float32(1.0)))) / tf.abs(tf.reduce_sum(tf.cast(pred > 0.5, tf.float32)) - tf.reduce_sum(y) + np.spacing(np.float32(1.0)))
-
+#cost = - tf.reduce_sum(tf.log((1 - pred) * (1 - y) + pred * y + np.spacing(np.float32(1.0)))) / tf.abs(tf.reduce_sum(tf.cast(pred > 0.5, tf.float32)) - tf.reduce_sum(y) + np.spacing(np.float32(1.0)))
+cost = - tf.reduce_mean(tf.log((1 - pred) * (1 - y) + pred * y * 100 + np.spacing(np.float32(1.0))))
 
 train_op = tf.train.AdamOptimizer(lr).minimize(cost)
 #correct_prediction = tf.equal(tf.round(y), tf.round(pred))
 #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 #accuracy = tf.reduce_mean(tf.cast(tf.abs(y - pred_) < 0.005, tf.float32))
-accuracy = 1 - tf.reduce_sum(tf.cast(tf.abs(y - pred_) > 0.5, tf.float32)) / (tf.reduce_sum(y) + np.spacing(np.float32(1.0)) )
+accuracy = 1 - tf.reduce_sum(tf.cast(tf.abs(y - pred_) > 0.5, tf.float32)) / tf.reduce_sum(y)
 
-"""
+
 with tf.Session() as sess:
     # tf.initialize_all_variables() no long valid from
     # 2017-03-02 if using tensorflow >= 0.12
@@ -284,6 +284,8 @@ with tf.Session() as sess:
             x: batch_xs,
             y: batch_ys,
         }))
+            print (sess.run(pred_[0], feed_dict={x: batch_xs}))
+            print batch_ys[0]
             #print(sess.run(cost, feed_dict={
             #x: batch_xs,
             #y: batch_ys,
@@ -296,7 +298,6 @@ with tf.Session() as sess:
     save_path = saver.save(sess, "./LSTMmodel/model.ckpt")
     print("Model saved in file: %s" % save_path)
     sess.close()
-"""
 
 
 #test
@@ -306,7 +307,7 @@ new_saver.restore(sess, "./LSTMmodel/model.ckpt")
 print("model restored.")
 
 
-"""
+
 init_i = random.randint(0,len(data)-n_steps*2)
 test_x = np.array(data[init_i : init_i+n_steps])
 test_x = test_x.reshape([1, n_steps, n_inputs])
@@ -320,10 +321,12 @@ for i in range(200):
     test_x = np.delete(test_x, (0), axis=1)
     test_x = np.append(test_x, predicted_y.reshape([1, 1, n_inputs]), axis=1)
     predicted_y = pred_.eval(feed_dict = {x: test_x})
+    print predicted_y
     outData = np.append(outData, predicted_y.reshape([1, 1, n_inputs]), axis=1)
+
+
+
 """
-
-
 init_i = random.randint(0,len(data)-n_steps*2)
 #init_i = 100
 test_x = []
@@ -361,7 +364,7 @@ for i in range(2000):
     
     #print predicted_y[0][0].reshape([1, 1, n_inputs])
     outData = np.append(outData,predicted_y[0][0].reshape([1, 1, n_inputs]), axis=1)
-
+"""
 sess.close()
 
 #plt.plot(outData[0])
