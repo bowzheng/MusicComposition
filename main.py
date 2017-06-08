@@ -240,7 +240,6 @@ biases = {
 pred = RNN(x, weights, biases)
 pred_ = tf.round(pred)
 
-#cost = tf.reduce_mean(tf.contrib.losses.mean_squared_error(pred, y))
 #cost = - tf.reduce_sum(tf.log((1 - pred) * (1 - y) + pred * y + np.spacing(np.float32(1.0)))) / tf.abs(tf.reduce_sum(tf.cast(pred > 0.5, tf.float32)) - tf.reduce_sum(y) + np.spacing(np.float32(1.0)))
 cost = - tf.reduce_mean(tf.log((1 - pred) * (1 - y) + pred * y * 100 + np.spacing(np.float32(1.0))))
 
