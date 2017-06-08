@@ -324,7 +324,6 @@ for i in range(200):
     outData = np.append(outData, predicted_y.reshape([1, 1, n_inputs]), axis=1)
 
 
-
 """
 init_i = random.randint(0,len(data)-n_steps*2)
 #init_i = 100
